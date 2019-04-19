@@ -1,0 +1,20 @@
+brew edit ocaml
+to add:
+    system "make", "ocamlnat"
+not sure this is necessary but i added it too:
+    system "make", "installoptopt", "PREFIX=#{prefix}"
+
+$ brew install -s ocaml # to install from source
+
+Then you just have to fix up the META file.
+Changed the requires line in package "toplevel" to:
+  requires = "compiler-libs.optcomp,compiler-libs.bytecomp"
+
+
+i think that was all
+
+oh the compiler-libs/META file is ~/.opam/default/lib/compiler-libs/META
+
+--
+
+/usr/local/Homebrew/Library/Taps/homebrew/homebrew-core/Formula/ocaml.rb
