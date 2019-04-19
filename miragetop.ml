@@ -3,8 +3,8 @@ open Lwt.Infix
 module Main (C: Mirage_console_lwt.S) (S: Mirage_stack_lwt.V4) = struct
   let preload_objects = ref []
 
-  let tcp_write flow str =
-    ignore (S.TCPV4.write flow (Cstruct.of_string str) >>= function
+  let tcp_write flow str off len =
+    ignore (S.TCPV4.write flow (Cstruct.of_string ~off ~len str) >>= function
             | Error e ->
                Logs.warn
                  (fun f -> f "Error writing data to established connection %a"
@@ -48,20 +48,16 @@ module Main (C: Mirage_console_lwt.S) (S: Mirage_stack_lwt.V4) = struct
                               (Ipaddr.V4.to_string dst) dst_port);
         Opttoploop.read_interactive_input :=
           (fun prompt buffer len ->
-          tcp_write flow prompt;
+          tcp_write flow prompt 0 (String.length prompt);
           match tcp_read flow with
           | None -> ignore (S.TCPV4.close flow);
                     (0, true)
-          | Some b -> Logs.debug (fun f -> f "read: %d bytes:\n%s"
-                                             (Bytes.length b)
-                                             (Bytes.to_string b));
-                      (* Bytes.blit b 0 buffer 0 len; *)
+          | Some b -> Bytes.blit b 0 buffer 0 (min (Bytes.length b) len);
                       (Bytes.length b, false););
         Opttoploop.loop (Format.make_formatter
-                           (fun str _ _ ->
-                             tcp_write flow str)
+                           (tcp_write flow)
                            (fun a -> a));
-        Lwt.return_unit
+        S.TCPV4.close flow;
       );
     S.listen s
 end
