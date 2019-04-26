@@ -1,7 +1,7 @@
 open Format
 
 (* Set the load paths, before running anything *)
-val set_paths : unit -> unit
+(*val set_paths : unit -> unit*)
 
 (* The interactive toplevel loop *)
 val loop : formatter -> unit
@@ -15,7 +15,7 @@ val initialize_toplevel_env : unit -> unit
 
 
 (* Hooks for external line editor *)
-val read_interactive_input : (string -> bytes -> int -> int * bool) ref
+                                        (*val read_interactive_input : (string -> bytes -> int -> int * bool) ref*)
 
 (* Hooks for initialization *)
-val toplevel_startup_hook : (unit -> unit) ref
+          (*val toplevel_startup_hook : (unit -> unit) ref*)
