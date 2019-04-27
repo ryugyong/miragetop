@@ -1,3 +1,14 @@
 .merlin
 *~
-.#*rm 
+.#*rm
+_build/
+main.ml
+*.native
+*.opam
+myocamlbuild.ml
+static*.ml*
+Makefile
+.mirage.config
+key_gen.ml
+miragetop
+mtop

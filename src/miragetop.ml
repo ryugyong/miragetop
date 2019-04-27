@@ -9,7 +9,9 @@ module Https_log = (val Logs.src_log https_src : Logs.LOG)
 let http_src = Logs.Src.create "http" ~doc:"HTTP server"
 module Http_log = (val Logs.src_log http_src : Logs.LOG)
 
-module Dispatch (FS: Mirage_types_lwt.KV_RO) (S: HTTP) = struct
+module Httop (KEYS: Mirage_types_lwt.KV_RO) (Pclock: Mirage_types.PCLOCK) (FS: Mirage_types_lwt.KV_RO) (S: HTTP) = struct
+  module X509 = Tls_mirage.X509(KEYS)(Pclock)
+
   let failf fmt = Fmt.kstrf Lwt.fail_with fmt
 
   (* given a URI, find the appropriate file,
@@ -54,23 +56,13 @@ module Dispatch (FS: Mirage_types_lwt.KV_RO) (S: HTTP) = struct
       Https_log.info (fun f-> f "[%s] closing" cid);
     in
     S.make ~conn_closed ~callback ()
-end
-                
-
-
-module Main (C: Mirage_console_lwt.S) (S: Mirage_stack_lwt.V4)
-         (Pclock: Mirage_types.PCLOCK) (DATA: Mirage_types_lwt.KV_RO)
-         (KEYS: Mirage_types_lwt.KV_RO) (Http: HTTP) = struct
-  
-  module X509 = Tls_mirage.X509(KEYS)(Pclock)
-  module D = Dispatch(DATA)(Http)
 
   let tls_init kv =
     X509.certificate kv `Default >>= fun cert ->
     let conf = Tls.Config.server ~certificates:(`Single cert) () in
     Lwt.return conf
 
-  let http_start data keys http =
+  let start data keys http =
     tls_init keys >>= fun cfg ->
     let https_port = Key_gen.https_port () in
     let tls = `TLS (cfg, `TCP https_port) in
@@ -78,14 +70,22 @@ module Main (C: Mirage_console_lwt.S) (S: Mirage_stack_lwt.V4)
     let tcp = `TCP http_port in
     let https =
       Https_log.info (fun f -> f "listening on %d/TCP" https_port);
-      http tls @@ D.serve (D.dispatcher data)
+      http tls @@ serve (dispatcher data)
     in
     let http =
       Http_log.info (fun f -> f "listening of %d/TCP" http_port);
-      http tcp @@ D.serve (D.redirect https_port)
+      http tcp @@ serve (redirect https_port)
     in
     Lwt.join [ https; http ]
-  
+end
+                
+
+module Main (C: Mirage_console_lwt.S) (S: Mirage_stack_lwt.V4)
+         (Pclock: Mirage_types.PCLOCK) (DATA: Mirage_types_lwt.KV_RO)
+         (KEYS: Mirage_types_lwt.KV_RO) (Http: HTTP) = struct
+
+  module Httop = Httop(KEYS)(Pclock)(DATA)(Http)
+
   let tcp_write flow str off len =
     ignore (S.TCPV4.write flow (Cstruct.of_string ~off ~len str) >>= function
             | Error e ->
@@ -129,6 +129,6 @@ module Main (C: Mirage_console_lwt.S) (S: Mirage_stack_lwt.V4)
         
         S.TCPV4.close flow;
       );
-    Lwt.join [http_start data keys http; S.listen s]
+    Lwt.join [Httop.start data keys http; S.listen s]
 end
                                                                    
