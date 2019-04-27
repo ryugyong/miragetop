@@ -18,7 +18,7 @@
 
 open Path
 open Format
-(*open Config
+open Config
 open Misc
 open Parsetree
 open Types
@@ -255,9 +255,9 @@ let pr_item =
     )
 
 (* The current typing environment for the toplevel *)
- *)
+
 let toplevel_env = ref Env.empty
-(*
+
 (* Print an exception produced by an evaluation *)
 
 let print_out_exception ppf exn outv =
@@ -514,7 +514,6 @@ let _ =
   Clflags.dlcode := true;
   ()
 
-          *)
 let initialize_toplevel_env () =
   toplevel_env := Compmisc.initial_env()
 (* The interactive loop *)
@@ -527,7 +526,7 @@ let loop ppf =
   if not !Clflags.noversion then
     fprintf ppf "        OCaml - native";
   initialize_toplevel_env ();
-(*  let lb = Lexing.from_function refill_lexbuf in
+  let lb = Lexing.from_function refill_lexbuf in
   Location.init lb "toplevel";
   Location.input_name := "//toplevel//";
   Location.input_lexbuf := Some lb;
@@ -549,4 +548,4 @@ let loop ppf =
     | Sys.Break -> fprintf ppf "Interrupted.@."; Btype.backtrack snap
     | PPerror -> ()
     | x -> Location.report_exception ppf x; Btype.backtrack snap
-  done *)
+  done
