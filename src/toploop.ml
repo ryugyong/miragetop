@@ -524,10 +524,10 @@ exception PPerror
 let loop ppf =
   Location.formatter_for_warnings := ppf;
   if not !Clflags.noversion then
-    fprintf ppf "        OCaml - native";
+    fprintf ppf "        OCaml version %s - native toplevel@.@." Config.version;
   initialize_toplevel_env ();
   let lb = Lexing.from_function refill_lexbuf in
-  Location.init lb "toplevel";
+  Location.init lb "//toplevel//";
   Location.input_name := "//toplevel//";
   Location.input_lexbuf := Some lb;
   Sys.catch_break true;
