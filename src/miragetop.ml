@@ -79,13 +79,7 @@ module Httop (KEYS: Mirage_types_lwt.KV_RO) (Pclock: Mirage_types.PCLOCK) (FS: M
     Lwt.join [ https; http ]
 end
                 
-
-module Main (C: Mirage_console_lwt.S) (S: Mirage_stack_lwt.V4)
-         (Pclock: Mirage_types.PCLOCK) (DATA: Mirage_types_lwt.KV_RO)
-         (KEYS: Mirage_types_lwt.KV_RO) (Http: HTTP) = struct
-
-  module Httop = Httop(KEYS)(Pclock)(DATA)(Http)
-
+module Tcptop (S: Mirage_stack_lwt.V4) = struct
   let tcp_write flow str off len =
     ignore (S.TCPV4.write flow (Cstruct.of_string ~off ~len str) >>= function
             | Error e ->
@@ -106,9 +100,8 @@ module Main (C: Mirage_console_lwt.S) (S: Mirage_stack_lwt.V4)
         | Ok (`Data b) ->
            Logs.debug (fun f -> f "read: %d bytes:\n%s" (Cstruct.len b)
                                   (Cstruct.to_string b));
-           Lwt.return_some (Cstruct.to_bytes b))
-    
-  let start _console s _clock data keys http =
+           Lwt.return_some (Cstruct.to_bytes b))  
+  let start s =
     let port = Key_gen.telnet_port () in
     S.listen_tcpv4 s ~port (fun flow ->
         let stdout = Format.make_formatter (tcp_write flow) (fun a -> a) in
@@ -129,6 +122,18 @@ module Main (C: Mirage_console_lwt.S) (S: Mirage_stack_lwt.V4)
         
         S.TCPV4.close flow;
       );
-    Lwt.join [Httop.start data keys http; S.listen s]
+    S.listen s
+end
+    
+module Main (C: Mirage_console_lwt.S) (S: Mirage_stack_lwt.V4)
+         (Pclock: Mirage_types.PCLOCK) (DATA: Mirage_types_lwt.KV_RO)
+         (KEYS: Mirage_types_lwt.KV_RO) (Http: HTTP) = struct
+
+  module Tcptop = Tcptop(S)
+  module Httop = Httop(KEYS)(Pclock)(DATA)(Http)
+
+  let start _console s _clock data keys http =
+
+    Lwt.join [Httop.start data keys http; Tcptop.start s]
 end
                                                                    
