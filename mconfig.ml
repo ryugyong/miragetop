@@ -32,7 +32,7 @@ let main =
                           "compiler-libs.toplevel";
                           "compiler-libs"] "ocaml-compiler-libs";] in
   let keys = List.map Key.abstract [ http_port; https_port; telnet_port ] in
-  foreign ~keys ~packages "Miragetop.Main"
+  foreign ~keys ~packages "Mtop.Main"
     (console @-> stackv4 @-> pclock @-> kv_ro @-> kv_ro @-> http @-> job)
   
           
