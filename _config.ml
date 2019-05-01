@@ -27,6 +27,7 @@ let main =
   let packages = [
       package "uri"; package "magic-mime";
       package "duration";
+      package "lambda-term";
       package ~ocamlfind:["compiler-libs.common";
                           "compiler-libs.optcomp";
                           "compiler-libs.toplevel";

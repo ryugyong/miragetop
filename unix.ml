@@ -2,12 +2,12 @@
 
 
 module Unix = struct
-  type reader = function () -> Bytes.t
-  type writer = (Bytes.t -> ())
-  type file_descr = reader | writer;
+  (* type reader = fun (() -> Bytes.t); *)
+  (* type writer = (Bytes.t -> ()) *)
+  (* type file_descr = reader | writer; *)
 
-  let reader (() -> string) = (* stdin *)
-    file_descr
+  (* let reader (() -> string) = (\* stdin *\) *)
+    (* file_denscr *)
 
   let read fd buf ofs len =
     0
