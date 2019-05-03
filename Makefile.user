@@ -1,7 +1,9 @@
 .PHONY: it
 
-it: *.ml
+main.ml: _config.ml
 	mirage configure -f _config.ml
+
+it: *.ml main.ml
 	mirage build -f _config.ml
 
 cleanit: Makefile

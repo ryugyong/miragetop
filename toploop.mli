@@ -5,7 +5,10 @@ open Format
 
 (* The interactive toplevel loop *)
 val loop : formatter -> unit
-  
+
+(* Eval a give phrase on the toplevel *)
+val eval : string -> Buffer.t -> unit
+
 (* Typing environment for the toplevel *)
 val toplevel_env : Env.t ref
 

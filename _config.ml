@@ -1,5 +1,3 @@
-
-
 open Mirage
 
 let stack = generic_stackv4 default_network
@@ -14,19 +12,15 @@ let https_port =
   Key.(create "https_port" Arg.(opt int 4433 doc))
 let certs_key = Key.(value @@ kv_ro ~group:"certs" ())
 let certs = generic_kv_ro ~key:certs_key "tls"
-
 let telnet_port =
-  let doc = Key.Arg.info
-              ~doc:"The TCP port on which to listen for incoming telnet-style connections."
-              ["port"] in
+  let doc = Key.Arg.info ~doc:
+              "The TCP port on which to listen for incoming telnet-style connections." ["port"] in
   Key.(create "telnet_port" Arg.(opt int 10018 doc))
-  
-  
+
 let main =
-  
   let packages = [
       package "uri"; package "magic-mime";
-      package "duration";
+      package "cow"; package "duration";
       package "lambda-term";
       package ~ocamlfind:["compiler-libs.common";
                           "compiler-libs.optcomp";
@@ -35,7 +29,6 @@ let main =
   let keys = List.map Key.abstract [ http_port; https_port; telnet_port ] in
   foreign ~keys ~packages "Mtop.Main"
     (console @-> stackv4 @-> pclock @-> kv_ro @-> kv_ro @-> http @-> job)
-  
           
 let () =
   register "miragetop" [

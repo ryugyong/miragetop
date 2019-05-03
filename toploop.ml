@@ -549,3 +549,32 @@ let loop ppf =
     | PPerror -> ()
     | x -> Location.report_exception ppf x; Btype.backtrack snap
   done
+
+
+let eval s b =
+  let ppf = Format.formatter_of_buffer b in
+  Location.formatter_for_warnings := ppf;
+  let lb = Lexing.from_string s in
+  Location.init lb "//toplevel//";
+  Location.input_name := "//toplevel//";
+  Location.input_lexbuf := Some lb;
+  Sys.catch_break true;
+  let snap = Btype.snapshot () in
+  begin
+  try
+    Location.reset();
+    let phr = try !parse_toplevel_phrase lb with Exit -> raise PPerror in
+    let phr = preprocess_phrase ppf phr in
+    Env.reset_cache_toplevel ();
+    if !Clflags.dump_parsetree then Printast.top_phrase ppf phr;
+    if !Clflags.dump_source then Pprintast.top_phrase ppf phr;
+    ignore(execute_phrase true ppf phr)
+  with
+  | End_of_file -> ()
+  | Sys.Break -> fprintf ppf "Interrupted.@."; Btype.backtrack snap
+  | PPerror -> ()
+  | x -> Location.report_exception ppf x; Btype.backtrack snap;
+  end;
+  Format.pp_print_flush ppf ()
+                                            
+

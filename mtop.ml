@@ -6,6 +6,7 @@ module Main (C: Mirage_console_lwt.S) (S: Mirage_stack_lwt.V4)
   module Httop = Mtop_http.Httop(KEYS)(Pclock)(DATA)(Http)
 
   let start _console s _clock data keys http =
+    print_string "this is start\n";
     Lwt.join [Httop.start data keys http; Tcptop.start s]
 end
                                                                    
