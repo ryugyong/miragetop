@@ -554,6 +554,7 @@ let loop ppf =
 let eval s b =
   let ppf = Format.formatter_of_buffer b in
   Location.formatter_for_warnings := ppf;
+  initialize_toplevel_env ();
   let lb = Lexing.from_string s in
   Location.init lb "//toplevel//";
   Location.input_name := "//toplevel//";

@@ -14,25 +14,24 @@ module Http_log = (val Logs.src_log http_src : Logs.LOG)
 
 
 module Httop (KEYS: Mirage_types_lwt.KV_RO) (Pclock: Mirage_types.PCLOCK)
-         (FS: Mirage_types_lwt.KV_RO) (S: HTTP) = struct
+         (DATA: Mirage_types_lwt.KV_RO) (S: HTTP) = struct
 
   module X509 = Tls_mirage.X509(KEYS)(Pclock)
-  module Hypertop = Mtop_html.Hypertop(S)
+  module Hypertop = Mtop_html.Hypertop(S)(DATA)
 
+  let headers = Cohttp.Header.init_with "Strict-Transport-Security" "max-age=31536000"
 
-  let headers =
-    Cohttp.Header.init_with "Strict-Transport-Security" "max-age=31536000"
   let dispatcher fs uri meth body =
     Lwt.catch
       (fun () ->
-        Hypertop.dispatcher uri meth (Cohttp_lwt.Body.to_string body))
+        Hypertop.dispatcher fs uri meth (Cohttp_lwt.Body.to_string body))
       (fun _exn -> 
         let path = Uri.path uri in
         let headers = Cohttp.Header.add headers "content-type" (Magic_mime.lookup path) in
            Lwt.catch
              (fun () ->
-               FS.get fs (Mirage_kv.Key.v path) >>= function
-               | Error e -> (Fmt.kstrf Lwt.fail_with "get: %a") FS.pp_error e
+               DATA.get fs (Mirage_kv.Key.v path) >>= function
+               | Error e -> (Fmt.kstrf Lwt.fail_with "get: %a") DATA.pp_error e
                | Ok body -> S.respond_string ~status:`OK ~body ~headers ())
              (fun _exn -> S.respond_not_found()))
 
