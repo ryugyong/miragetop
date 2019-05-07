@@ -30,14 +30,25 @@ module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RO) = struct
                         white-space: pre-wrap;
                         padding: 10px;
                         line-height: 1.5;
+                        width: 500px;
+                        display: block;
+                        }
+                        .raise, input {
                         border-radius: 5px;
                         border: 1px solid #ccc;
                         box-shadow: 1px 1px 1px #999;
-                        width: 500px;
+                        margin: 5px;
                         }
-                        label, textarea, button {
-                        display: block;
-                        margin-bottom: 10px;
+                        input {
+                        padding: 2px 8px;
+                        }
+                        input[type="submit"]:hover {
+                        color: #333333;
+                        background-color: #DDDDDD;
+                        }
+                        input[type="submit"]:active {
+                        color: #
+                        box-shadow: 0;
                         }
                         |}]))
       ++ body the_body in
@@ -45,22 +56,20 @@ module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RO) = struct
     Cow.Html.output_doc ~nl:true (`Buffer b) dom;
     Buffer.contents b
     
-  let repl_page ?(code="new file") ?(res="") () =
-    let body =
-    (div ~cls:"code" (tag ~attrs:[("action","/repl");("method","post")] "form"
-                        (list [
-                             tag ~attrs:[("name", "sequence");
-                                          ("id", "sequence");
-                                          ("autocapitalize", "none"); (* iOS *)
-                                          ("autocomplete", "off");
-                                          ("autofocus", "true");
-                                          ("spellcheck", "false");
-                                          ("wrap", "soft");
-                                          ("rows", "10");
-                                          ("cols", "50")] "textarea" (string code);
-                             br;
-                             tag ~attrs:[("type","submit")] "button" (string "eval")])))
-    ++ (div ~cls:"interface" (tag "samp" (string res))) in
+  let repl_page ?(code="new file") ?(res="") key =
+    let code =
+      (tag ~attrs:[("action","/repl");("method","post")] "form"
+         (list
+            [tag ~cls:"raise"
+               ~attrs:[("name", "sequence");
+                       ("autocapitalize", "none"); (* iOS *)
+                       ("autocomplete", "off"); ("autofocus", "true");
+                       ("spellcheck", "false"); ("wrap", "soft");
+                       ("rows", "10"); ("cols", "50")] "textarea" (string code);
+             input ~ty:"submit" ~cls:"raise" ~attrs:[("name","eval")] "eval";
+             input ~ty:"submit" ~cls:"raise" ~attrs:[("name","save")] "save";
+             input ~cls:"raise" ~ty:"text" ~attrs:[("placeholder","key")] key;])) in
+    let body = div ~cls:"code" code ++ div ~cls:"interface raise" (string res) in
     page ~title:"mtop" body
 
   let dispatcher fs uri meth body =
@@ -79,13 +88,13 @@ module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RO) = struct
             let code = query_val body "sequence" in
             Log.info (fun f -> (f "eval:\n %s" code));
             S.respond_string ~status:`OK
-              ~body:(repl_page ~code ~res:(Shell.eval code) ()) ~headers ()
+              ~body:(repl_page ~code ~res:(Shell.eval code) "test") ~headers ()
        | _ ->
           DATA.get fs (Mirage_kv.Key.v "test") >>= function
           | Error _e ->
-             S.respond_string ~headers ~status:`Not_found ~body:(repl_page ()) ()
+             S.respond_string ~headers ~status:`Not_found ~body:(repl_page "test") ()
           | Ok sequence -> 
-             S.respond_string ~headers ~status:`OK ~body:(repl_page ~code:sequence ()) ())
+             S.respond_string ~headers ~status:`OK ~body:(repl_page ~code:sequence "test") ())
     | _path ->
        raise @@ Failure ("not handled"^path)
        
