@@ -1,8 +1,8 @@
 open Mirage
 
 let stack = generic_stackv4 default_network
-let data_key = Key.(value @@ kv_ro ~group:"data" ())
-let data = generic_kv_ro ~key:data_key "htdocs"
+(* let data_key = Key.(value @@ kv_ro ~group:"data" ()) *)
+let data = direct_kv_rw (* generic_kv_ro ~key:data_key *) "htdocs"
 let https_srv = http_server @@ conduit_direct ~tls:true stack
 let http_port =
   let doc = Key.Arg.info ~doc:"Listening HTTP port." ["http"] in
@@ -28,7 +28,7 @@ let main =
                           "compiler-libs"] "ocaml-compiler-libs";] in
   let keys = List.map Key.abstract [ http_port; https_port; telnet_port ] in
   foreign ~keys ~packages "Mtop.Main"
-    (console @-> stackv4 @-> pclock @-> kv_ro @-> kv_ro @-> http @-> job)
+    (console @-> stackv4 @-> pclock @-> kv_rw @-> kv_ro @-> http @-> job)
           
 let () =
   register "miragetop" [

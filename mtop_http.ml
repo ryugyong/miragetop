@@ -14,7 +14,7 @@ module Http_log = (val Logs.src_log http_src : Logs.LOG)
 
 
 module Httop (KEYS: Mirage_types_lwt.KV_RO) (Pclock: Mirage_types.PCLOCK)
-         (DATA: Mirage_types_lwt.KV_RO) (S: HTTP) = struct
+         (DATA: Mirage_types_lwt.KV_RW) (S: HTTP) = struct
 
   module X509 = Tls_mirage.X509(KEYS)(Pclock)
   module Hypertop = Mtop_html.Hypertop(S)(DATA)

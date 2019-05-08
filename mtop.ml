@@ -1,6 +1,6 @@
 
 module Main (C: Mirage_console_lwt.S) (S: Mirage_stack_lwt.V4)
-         (Pclock: Mirage_types.PCLOCK) (DATA: Mirage_types_lwt.KV_RO)
+         (Pclock: Mirage_types.PCLOCK) (DATA: Mirage_types_lwt.KV_RW)
          (KEYS: Mirage_types_lwt.KV_RO) (Http: Mtop_http.HTTP) = struct
 
   module Tcptop = Mtop_term.Tcptop(S)

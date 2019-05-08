@@ -6,7 +6,7 @@ let mtop_html = Logs.Src.create "mtop_html" ~doc:"Hypertop Module"
 module Log = (val Logs.src_log mtop_html : Logs.LOG)
 
 
-module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RO) = struct
+module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RW) = struct
   module Shell = Mtop_shell.Shell
 
   let headers =
@@ -39,7 +39,7 @@ module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RO) = struct
                         box-shadow: 1px 1px 1px #999;
                         margin: 5px;
                         }
-                        input {
+                        input, .status {
                         padding: 2px 8px;
                         }
                         input[type="submit"]:hover {
@@ -47,7 +47,8 @@ module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RO) = struct
                         background-color: #DDDDDD;
                         }
                         input[type="submit"]:active {
-                        color: #
+                        color: #DDDDDD;
+                        background-color: #000000;
                         box-shadow: 0;
                         }
                         |}]))
@@ -56,9 +57,9 @@ module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RO) = struct
     Cow.Html.output_doc ~nl:true (`Buffer b) dom;
     Buffer.contents b
     
-  let repl_page ?(code="new file") ?(res="") key =
+  let repl_page ?(msg="") ?(code="new file") ?(res="") key =
     let code =
-      (tag ~attrs:[("action","/repl");("method","post")] "form"
+      (tag ~attrs:[("action","/top/"^key);("method","post")] "form"
          (list
             [tag ~cls:"raise"
                ~attrs:[("name", "sequence");
@@ -68,35 +69,52 @@ module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RO) = struct
                        ("rows", "10"); ("cols", "50")] "textarea" (string code);
              input ~ty:"submit" ~cls:"raise" ~attrs:[("name","eval")] "eval";
              input ~ty:"submit" ~cls:"raise" ~attrs:[("name","save")] "save";
-             input ~cls:"raise" ~ty:"text" ~attrs:[("placeholder","key")] key;])) in
-    let body = div ~cls:"code" code ++ div ~cls:"interface raise" (string res) in
+             input ~cls:"raise" ~ty:"text" ~attrs:[("placeholder","key")] key;
+             span ~cls:"status" (string msg)])) in
+    let body = div ~cls:"code" code
+               ++ div ~cls:"interface raise" (string res) in
     page ~title:"mtop" body
 
+  let split_path path =
+    let rec aux = function
+      | [] | [""] -> []
+      | hd::tl -> hd :: aux tl
+    in
+    List.filter (fun e -> e <> "") (aux (Re.Str.(split_delim (regexp_string "/") path)))
+    
   let dispatcher fs uri meth body =
-    let path = Uri.path uri in
+    let path = split_path @@ Uri.path uri in
+    Log.info (fun f -> f "dispatching %s" @@ String.concat "/" path);
     match path with
-    | "" | "/" ->
+    | [] | [""] | ["";""] ->
        let uri = Uri.of_string in
-       let body = a ~href:(uri "/repl") (img (uri "/NJT1369.gif")) in
+       let body = a ~href:(uri "/top") (img (uri "/NJT1369.gif")) in
        let headers = Cohttp.Header.add headers "content-type" "text/html" in
        S.respond_string ~status:`OK ~body:(page ~title:"hey" body) ~headers ()
-    | "/repl" ->
-      ( match meth with
-       | `POST ->
+    | "top" :: key ->
+       let path = String.concat "/" key in
+       (match meth with
+         | `POST ->
           Log.info (fun f -> f "/repl POST");
           body >>= fun body ->
             let code = query_val body "sequence" in
             Log.info (fun f -> (f "eval:\n %s" code));
-            S.respond_string ~status:`OK
-              ~body:(repl_page ~code ~res:(Shell.eval code) "test") ~headers ()
+            DATA.set fs (Mirage_kv.Key.v path) code >>= fun r ->
+            let status,msg = match r with
+              | Error _e -> (`Internal_server_error,"failed to save")
+              | Ok _ -> (`OK,"saved") in
+            S.respond_string ~status ~headers
+              ~body:(repl_page ~msg ~code ~res:(Shell.eval code) path) ()
        | _ ->
-          DATA.get fs (Mirage_kv.Key.v "test") >>= function
+          Log.info (fun f -> f "fetching %s" path);
+          DATA.get fs (Mirage_kv.Key.v path) >>= function
           | Error _e ->
-             S.respond_string ~headers ~status:`Not_found ~body:(repl_page "test") ()
+             S.respond_string ~headers ~status:`Not_found
+               ~body:(repl_page ~code:"(* new file *)" path) ()
           | Ok sequence -> 
-             S.respond_string ~headers ~status:`OK ~body:(repl_page ~code:sequence "test") ())
-    | _path ->
-       raise @@ Failure ("not handled"^path)
+             S.respond_string ~headers ~status:`OK ~body:(repl_page ~code:sequence path) ())
+    | _ ->
+       raise @@ Failure ("not handled"^Uri.path uri)
        
 
 end
