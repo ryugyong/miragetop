@@ -30,7 +30,7 @@ module Tcptop (S: Mirage_stack_lwt.V4) = struct
         let dst, dst_port = S.TCPV4.dst flow in
         Logs.info (fun f -> f "new tcp connection from IP %s on port %d"
                               (Ipaddr.V4.to_string dst) dst_port);
-        Toploop.read_interactive_input :=
+        Loop.read_interactive_input :=
           (fun prompt buffer len ->
             tcp_write flow prompt 0 (String.length prompt);
             match tcp_read flow with
@@ -38,7 +38,7 @@ module Tcptop (S: Mirage_stack_lwt.V4) = struct
                       (0, true)
             | Some b -> Bytes.blit b 0 buffer 0 (min (Bytes.length b) len);
                         (Bytes.length b, false););
-        Toploop.loop stdout;
+        Loop.loop stdout;
         
         S.TCPV4.close flow;
       );

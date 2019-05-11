@@ -7,7 +7,7 @@ module Log = (val Logs.src_log mtop_html : Logs.LOG)
 
 
 module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RW) = struct
-  module Shell = Mtop_shell.Shell
+  module Shell = Shell.Shell(DATA)
 
   let headers =
     Cohttp.Header.init_with "Strict-Transport-Security" "max-age=31536000"
@@ -26,7 +26,7 @@ module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RW) = struct
                         font-size: .8rem;
                         letter-spacing: 1px;
                         }
-                        textarea, .interface {
+                        textarea, .interface, .ast {
                         white-space: pre-wrap;
                         padding: 10px;
                         line-height: 1.5;
@@ -57,7 +57,7 @@ module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RW) = struct
     Cow.Html.output_doc ~nl:true (`Buffer b) dom;
     Buffer.contents b
     
-  let repl_page ?(msg="") ?(code="new file") ?(res="") key =
+  let repl_page ?(msg="") ?(code="new file") ?(res="") ?(ast="no ast") key =
     let code =
       (tag ~attrs:[("action","/top/"^key);("method","post")] "form"
          (list
@@ -72,7 +72,8 @@ module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RW) = struct
              input ~cls:"raise" ~ty:"text" ~attrs:[("placeholder","key")] key;
              span ~cls:"status" (string msg)])) in
     let body = div ~cls:"code" code
-               ++ div ~cls:"interface raise" (string res) in
+               ++ div ~cls:"interface raise" (string res)
+               ++ div ~cls:"ast raise" (string ast) in
     page ~title:"mtop" body
 
   let split_path path =
@@ -104,7 +105,7 @@ module Hypertop (S: Cohttp_lwt.S.Server) (DATA: Mirage_types_lwt.KV_RW) = struct
               | Error _e -> (`Internal_server_error,"failed to save")
               | Ok _ -> (`OK,"saved") in
             S.respond_string ~status ~headers
-              ~body:(repl_page ~msg ~code ~res:(Shell.eval code) path) ()
+              ~body:(repl_page ~msg ~code ~res:(Shell.eval_to_string code) path) ()
        | _ ->
           Log.info (fun f -> f "fetching %s" path);
           DATA.get fs (Mirage_kv.Key.v path) >>= function

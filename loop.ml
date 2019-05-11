@@ -26,6 +26,10 @@ open Typedtree
 open Outcometree
 open Ast_helper
 
+(* Logging *)
+module Log = (val Logs.src_log (Logs.Src.create "toploop" ~doc:"toploop.ml banga") : Logs.LOG)
+
+
 type res = Ok of Obj.t | Err of string
 type evaluation_outcome = Result of Obj.t | Exception of exn
 
@@ -249,7 +253,7 @@ let load_lambda ppf ~module_ident ~required_globals lam size =
 let pr_item =
   Printtyp.print_items
     (fun env -> function
-      | Sig_value(id, {val_kind = Val_reg; val_type}) ->
+      | Sig_value(id, {val_kind = Val_reg; val_type; _}) ->
           Some (outval_of_value env (toplevel_value id) val_type)
       | _ -> None
     )
@@ -364,9 +368,13 @@ let execute_phrase print_outcome ppf phr =
         toplevel_env := oldenv; raise x
       end
   | Ptop_dir(dir_name, dir_arg) ->
-      let d =
-        try Some (Hashtbl.find directive_table dir_name)
-        with Not_found -> None
+     let d =
+       Log.info (fun f -> f "execute_phrase() directive_table.length: %d"
+                          @@ Hashtbl.length directive_table);
+       Log.info (fun f -> f "execute_phrase() Hashtbl.mem: %B"
+                          @@ Hashtbl.mem directive_table dir_name);
+       try Some (Hashtbl.find directive_table dir_name)
+       with Not_found -> None
       in
       begin match d with
       | None ->
@@ -514,6 +522,14 @@ let _ =
   Clflags.dlcode := true;
   ()
 
+let set_paths () =
+  (* Add whatever -I options have been specified on the command line,
+     but keep the directories that user code linked in with ocamlmktop
+     may have added to load_path. *)
+  load_path := !load_path @ [Filename.concat Config.standard_library "camlp4"];
+  load_path := "" :: (List.rev !Clflags.include_dirs @ !load_path);
+  ()
+  
 let initialize_toplevel_env () =
   toplevel_env := Compmisc.initial_env()
 (* The interactive loop *)
@@ -551,13 +567,12 @@ let loop ppf =
   done
 
 
-let eval s b =
-  let ppf = Format.formatter_of_buffer b in
+let eval ?(name="//toplevel//") ppf s =
   Location.formatter_for_warnings := ppf;
   initialize_toplevel_env ();
   let lb = Lexing.from_string s in
-  Location.init lb "//toplevel//";
-  Location.input_name := "//toplevel//";
+  Location.init lb name;
+  Location.input_name := name;
   Location.input_lexbuf := Some lb;
   Sys.catch_break true;
   let snap = Btype.snapshot () in
